@@ -1,6 +1,7 @@
 package com.ulianova.kafka.tutorial.elasticsearch;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
@@ -39,21 +40,27 @@ public class ElasticSearchConsumer {
 
         KafkaConsumer<String, String> consumer = createConsumer(TutorialConstants.TOPIC_TWITTER_TWEETS);
         ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule());
 
         while (true) {
             ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(100));
 
             records.forEach(record -> {
                 try {
+
                     MockTweetDto mockTweetDto = objectMapper.readValue(record.value(), MockTweetDto.class);
+                    String id = mockTweetDto.getId();
+                    // another id option
+                    // record.topic() + "_" + record.partition() + "_" + record.offset();
+
                     IndexRequest indexRequest = new IndexRequest(
                             "twitter",
                             "tweets",
-                            mockTweetDto.getId() // to make consumer idempotent
+                            id // to make consumer idempotent
                     ).source(record.value(), XContentType.JSON);
                     IndexResponse indexResponse = client.index(indexRequest, RequestOptions.DEFAULT);
-                    String id = indexResponse.getId();
-                    logger.info(id); // check by GET /twitter/tweets/{id}
+                    logger.info(indexResponse.getId()); // check by GET /twitter/tweets/{id}
+
                     Thread.sleep(1000L);
                 } catch (IOException e) {
                     logger.error("Failed to index a message", e);

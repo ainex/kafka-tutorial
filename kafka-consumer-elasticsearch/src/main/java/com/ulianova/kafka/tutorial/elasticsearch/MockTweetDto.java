@@ -9,6 +9,9 @@ public class MockTweetDto {
     private String authorId;
     private Instant timestamp;
 
+    public MockTweetDto() {
+    }
+
     public MockTweetDto(String id, String text, String authorId, Instant timestamp) {
         this.id = id;
         this.text = text;
@@ -30,5 +33,21 @@ public class MockTweetDto {
 
     public Instant getTimestamp() {
         return timestamp;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
+
+    public void setText(String text) {
+        this.text = text;
+    }
+
+    public void setAuthorId(String authorId) {
+        this.authorId = authorId;
+    }
+
+    public void setTimestamp(Instant timestamp) {
+        this.timestamp = timestamp;
     }
 }
