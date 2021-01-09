@@ -2,6 +2,7 @@ package com.ulianova.kafka.tutorial.twitterelastic;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.twitter.hbc.core.Client;
 import com.twitter.hbc.core.StatsReporter;
 import com.twitter.hbc.core.endpoint.StreamingEndpoint;
@@ -19,6 +20,7 @@ public class MockTwitterClient implements Client, Runnable {
 
     public MockTwitterClient(BlockingQueue<String> messageQueue) {
         this.messageQueue = messageQueue;
+        objectMapper.registerModule(new JavaTimeModule());
     }
 
     @Override
