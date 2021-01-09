@@ -44,10 +44,9 @@ public class ElasticSearchConsumer {
 
         while (true) {
             ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(100));
-
+            logger.info("Received {} records", records.count());
             records.forEach(record -> {
                 try {
-
                     MockTweetDto mockTweetDto = objectMapper.readValue(record.value(), MockTweetDto.class);
                     String id = mockTweetDto.getId();
                     // another id option
@@ -69,6 +68,15 @@ public class ElasticSearchConsumer {
                 }
             });
 
+            logger.info("Committing offsets...");
+            consumer.commitSync();
+            logger.info("Offsets have been committed");
+
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
 
         //client.close();
@@ -94,6 +102,8 @@ public class ElasticSearchConsumer {
         properties.setProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
         properties.setProperty(ConsumerConfig.GROUP_ID_CONFIG, TutorialConstants.ELASTIC_GROUP_ID);
         properties.setProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        properties.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, Boolean.FALSE.toString());
+        properties.setProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, Integer.toString(10));
 
         KafkaConsumer<String, String> consumer = new KafkaConsumer<>(properties);
 
