@@ -11,8 +11,9 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.StringDeserializer;
+import org.elasticsearch.action.bulk.BulkRequest;
+import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.action.index.IndexRequest;
-import org.elasticsearch.action.index.IndexResponse;
 import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestClientBuilder;
@@ -23,8 +24,10 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
+import java.util.stream.Collectors;
 
 public class ElasticSearchConsumer {
     private static final Logger logger = LoggerFactory.getLogger(ElasticSearchConsumer.class);
@@ -44,7 +47,12 @@ public class ElasticSearchConsumer {
 
         while (true) {
             ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(100));
-            logger.info("Received {} records", records.count());
+            logger.info("Received {} records from partitions {}",
+                    records.count(),
+                    records.partitions().stream().map(tp -> tp.partition()).collect(Collectors.toSet()));
+
+            BulkRequest elasticBulkRequest = new BulkRequest();
+
             records.forEach(record -> {
                 try {
                     MockTweetDto mockTweetDto = objectMapper.readValue(record.value(), MockTweetDto.class);
@@ -57,25 +65,25 @@ public class ElasticSearchConsumer {
                             "tweets",
                             id // to make consumer idempotent
                     ).source(record.value(), XContentType.JSON);
-                    IndexResponse indexResponse = client.index(indexRequest, RequestOptions.DEFAULT);
-                    logger.info(indexResponse.getId()); // check by GET /twitter/tweets/{id}
-
-                    Thread.sleep(1000L);
+                    elasticBulkRequest.add(indexRequest);
                 } catch (IOException e) {
                     logger.error("Failed to index a message", e);
-                } catch (InterruptedException e) {
-                    logger.error("Unexpected exception", e);
                 }
             });
 
-            logger.info("Committing offsets...");
-            consumer.commitSync();
-            logger.info("Offsets have been committed");
-
-            try {
-                Thread.sleep(1000);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
+            if (!records.isEmpty()) {
+                logger.info("Sending bulk request to elastic");
+                BulkResponse elasticBulkResponse = client.bulk(elasticBulkRequest, RequestOptions.DEFAULT);
+                List<String> ids = Arrays.stream(elasticBulkResponse.getItems()).map(response -> response.getId()).collect(Collectors.toList());
+                logger.info("Sent records with ids {}", ids);
+                logger.info("Committing offsets");
+                consumer.commitSync();
+                logger.info("Offsets have been committed");
+                try {
+                    Thread.sleep(1000); // just a pause for a better demo
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
             }
         }
 
