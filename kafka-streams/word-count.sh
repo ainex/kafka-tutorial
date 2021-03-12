@@ -14,6 +14,6 @@ kafka-console-consumer --bootstrap-server 127.0.0.1:9092 `
 --property key.deserializer=org.apache.kafka.common.serialization.StringDeserializer `
 --property value.deserializer=org.apache.kafka.common.serialization.LongDeserializer
 
-# launch a kafka consumer
+# launch a kafka producer
 kafka-console-producer --bootstrap-server 127.0.0.1:9092 --topic word-count-input
 
